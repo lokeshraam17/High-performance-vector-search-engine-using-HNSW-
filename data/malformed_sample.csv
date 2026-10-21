@@ -1,0 +1,6 @@
+id,title,text,category
+valid_01,Valid First Document,This is a valid document with complete text and metadata.,Testing
+valid_01,Duplicate ID Row,This row has a duplicate ID valid_01 to test collision handling.,Testing
+valid_02,Empty Text Row,,Testing
+,Missing ID Row,This row has valid text but missing ID.,Testing
+valid_03,Valid Third Document,This is another completely valid document at the end of the file.,Testing
