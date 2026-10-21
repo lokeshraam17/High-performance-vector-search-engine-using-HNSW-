@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HNSW Search Engine Benchmark Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f8fafc; color: #1e293b; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 26px; color: #0f172a; margin-bottom: 8px; }
+  .subtitle { color: #64748b; margin-top: 0; margin-bottom: 24px; font-size: 15px; }
+  .card { background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .card h3 { margin-top: 0; color: #1e293b; font-size: 18px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
+  .sys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .sys-item { background: #f1f5f9; padding: 10px 14px; border-radius: 6px; font-size: 13px; }
+  .sys-item strong { display: block; color: #475569; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+  th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px 12px; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+  tr:hover { background: #f8fafc; }
+  .highlight-recall { color: #16a34a; font-weight: 600; }
+  .highlight-speedup { color: #2563eb; font-weight: 600; }
+  .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; }
+  .chart-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center; }
+  .chart-card img { max-width: 100%; height: auto; border-radius: 4px; }
+  .chart-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #334155; }
+  .note-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #1e40af; margin-top: 16px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>HNSW Search Engine Benchmark Report</h1>
+  <p class="subtitle">Empirical Performance, Accuracy (Recall@K), and Trade-off Analysis against Exact Baseline</p>
+
+  <div class="card">
+    <h3>Hardware & Software Test Environment</h3>
+    <div class="sys-grid">
+      <div class="sys-item"><strong>Operating System</strong>Windows 11 (AMD64)</div>
+      <div class="sys-item"><strong>Processor</strong>Intel64 Family 6 Model 170 Stepping 4, GenuineIntel</div>
+      <div class="sys-item"><strong>CPU Cores</strong>18</div>
+      <div class="sys-item"><strong>Total Memory</strong>15.43 GB RAM</div>
+      <div class="sys-item"><strong>Python Version</strong>3.13.7</div>
+      <div class="sys-item"><strong>Benchmark Timestamp</strong>2026-10-21T18:36:12.857390</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Empirical Results Table</h3>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Experiment</th>
+            <th>N</th>
+            <th>M</th>
+            <th>efC</th>
+            <th>efS</th>
+            <th>Recall@K</th>
+            <th>HNSW Mean</th>
+            <th>HNSW p95</th>
+            <th>HNSW QPS</th>
+            <th>BF Mean</th>
+            <th>Speedup</th>
+            <th>Dist Reduction</th>
+            <th>Peak RAM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>scale_N_50</strong></td><td>50</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>0.489 ms</td><td>0.696 ms</td><td>2046.4</td><td>0.348 ms</td><td class='highlight-speedup'>0.7x</td><td>0.9x</td><td>0.07 MB</td></tr><tr><td><strong>scale_N_100</strong></td><td>100</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>0.882 ms</td><td>1.527 ms</td><td>1133.1</td><td>0.782 ms</td><td class='highlight-speedup'>0.9x</td><td>0.9x</td><td>0.14 MB</td></tr><tr><td><strong>scale_N_200</strong></td><td>200</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>1.455 ms</td><td>2.243 ms</td><td>687.1</td><td>1.294 ms</td><td class='highlight-speedup'>0.9x</td><td>0.9x</td><td>0.26 MB</td></tr><tr><td><strong>scale_N_400</strong></td><td>400</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>2.941 ms</td><td>4.630 ms</td><td>340.0</td><td>6.627 ms</td><td class='highlight-speedup'>2.3x</td><td>1.1x</td><td>0.54 MB</td></tr><tr><td><strong>scale_N_800</strong></td><td>800</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>99.0%</td><td>4.095 ms</td><td>6.118 ms</td><td>244.2</td><td>6.763 ms</td><td class='highlight-speedup'>1.7x</td><td>1.4x</td><td>1.03 MB</td></tr><tr><td><strong>sweep_efSearch_5</strong></td><td>400</td><td>16</td><td>64</td><td>5</td><td class='highlight-recall'>82.4%</td><td>1.149 ms</td><td>1.551 ms</td><td>870.2</td><td>2.627 ms</td><td class='highlight-speedup'>2.3x</td><td>2.3x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efSearch_10</strong></td><td>400</td><td>16</td><td>64</td><td>10</td><td class='highlight-recall'>93.6%</td><td>1.616 ms</td><td>1.873 ms</td><td>618.7</td><td>2.527 ms</td><td class='highlight-speedup'>1.6x</td><td>1.6x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efSearch_20</strong></td><td>400</td><td>16</td><td>64</td><td>20</td><td class='highlight-recall'>100.0%</td><td>2.245 ms</td><td>3.054 ms</td><td>445.5</td><td>2.492 ms</td><td class='highlight-speedup'>1.1x</td><td>1.2x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efSearch_40</strong></td><td>400</td><td>16</td><td>64</td><td>40</td><td class='highlight-recall'>100.0%</td><td>2.901 ms</td><td>3.864 ms</td><td>344.8</td><td>2.797 ms</td><td class='highlight-speedup'>1.0x</td><td>1.0x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efSearch_80</strong></td><td>400</td><td>16</td><td>64</td><td>80</td><td class='highlight-recall'>100.0%</td><td>3.227 ms</td><td>4.451 ms</td><td>309.9</td><td>2.575 ms</td><td class='highlight-speedup'>0.8x</td><td>1.0x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efSearch_160</strong></td><td>400</td><td>16</td><td>64</td><td>160</td><td class='highlight-recall'>100.0%</td><td>3.850 ms</td><td>5.653 ms</td><td>259.7</td><td>2.529 ms</td><td class='highlight-speedup'>0.7x</td><td>0.9x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efConst_16</strong></td><td>400</td><td>16</td><td>16</td><td>32</td><td class='highlight-recall'>99.2%</td><td>2.417 ms</td><td>3.075 ms</td><td>413.8</td><td>2.660 ms</td><td class='highlight-speedup'>1.1x</td><td>1.1x</td><td>0.49 MB</td></tr><tr><td><strong>sweep_efConst_32</strong></td><td>400</td><td>16</td><td>32</td><td>32</td><td class='highlight-recall'>100.0%</td><td>2.705 ms</td><td>4.059 ms</td><td>369.7</td><td>2.944 ms</td><td class='highlight-speedup'>1.1x</td><td>1.1x</td><td>0.53 MB</td></tr><tr><td><strong>sweep_efConst_64</strong></td><td>400</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>2.675 ms</td><td>3.976 ms</td><td>373.8</td><td>2.543 ms</td><td class='highlight-speedup'>1.0x</td><td>1.1x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_efConst_128</strong></td><td>400</td><td>16</td><td>128</td><td>32</td><td class='highlight-recall'>100.0%</td><td>2.668 ms</td><td>3.707 ms</td><td>374.8</td><td>2.464 ms</td><td class='highlight-speedup'>0.9x</td><td>1.1x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_M_4</strong></td><td>400</td><td>4</td><td>64</td><td>32</td><td class='highlight-recall'>83.2%</td><td>1.606 ms</td><td>3.150 ms</td><td>622.8</td><td>2.627 ms</td><td class='highlight-speedup'>1.6x</td><td>2.0x</td><td>0.44 MB</td></tr><tr><td><strong>sweep_M_8</strong></td><td>400</td><td>8</td><td>64</td><td>32</td><td class='highlight-recall'>96.0%</td><td>2.166 ms</td><td>3.132 ms</td><td>461.7</td><td>2.620 ms</td><td class='highlight-speedup'>1.2x</td><td>1.3x</td><td>0.49 MB</td></tr><tr><td><strong>sweep_M_16</strong></td><td>400</td><td>16</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>2.977 ms</td><td>4.110 ms</td><td>335.9</td><td>2.641 ms</td><td class='highlight-speedup'>0.9x</td><td>1.1x</td><td>0.54 MB</td></tr><tr><td><strong>sweep_M_24</strong></td><td>400</td><td>24</td><td>64</td><td>32</td><td class='highlight-recall'>100.0%</td><td>2.751 ms</td><td>3.456 ms</td><td>363.5</td><td>2.482 ms</td><td class='highlight-speedup'>0.9x</td><td>1.0x</td><td>0.58 MB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note-box">
+      <strong>Algorithmic Analysis:</strong> HNSW trades search completeness for logarithmic query complexity. Because search paths are guided by local greedy graph routing, lower values of <code>efSearch</code> may miss global optima. Increasing <code>efSearch</code> smoothly improves Recall@K toward 100% while gracefully bounding distance computations compared to exhaustive O(N) brute force.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Performance Visualizations</h3>
+    <div class="charts-grid">
+      <div class='chart-card'><h4>Latency Vs Dataset Size</h4><img src='chart_latency_vs_dataset_size.png' alt='chart_latency_vs_dataset_size.png' /></div><div class='chart-card'><h4>Tradeoff Recall Vs Efsearch</h4><img src='chart_tradeoff_recall_vs_efsearch.png' alt='chart_tradeoff_recall_vs_efsearch.png' /></div><div class='chart-card'><h4>Build Time Vs Efconstruction</h4><img src='chart_build_time_vs_efconstruction.png' alt='chart_build_time_vs_efconstruction.png' /></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
