@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HNSW Vector Search Engine | High-Performance Approximate Nearest Neighbor</title>
+  <meta name="description" content="High-Performance Vector Search Engine using Hierarchical Navigable Small World (HNSW) graph algorithm for sub-millisecond approximate nearest neighbor retrieval.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-base: #090d16;
+      --bg-surface: rgba(18, 24, 38, 0.75);
+      --bg-surface-hover: rgba(27, 36, 56, 0.85);
+      --bg-card: rgba(15, 21, 34, 0.65);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.25);
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+      --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Container */
+    .app-container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      width: 100%;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-badge {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      box-shadow: 0 8px 20px var(--primary-glow);
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--accent-emerald);
+      backdrop-filter: blur(8px);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition);
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-surface-hover);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Stats HUD */
+    .stats-hud {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .stat-card.accent-cyan::after { background: var(--accent-cyan); }
+    .stat-card.accent-emerald::after { background: var(--accent-emerald); }
+    .stat-card.accent-purple::after { background: var(--accent-purple); }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Search Box Section */
+    .search-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-lg);
+      margin-bottom: 24px;
+    }
+
+    .search-bar-wrapper {
+      display: flex;
+      gap: 12px;
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-input-box {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 18px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 15px 44px 15px 48px;
+      background: rgba(10, 15, 26, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-glow);
+      background: rgba(10, 15, 26, 0.95);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 14px;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 4px;
+      display: none;
+      font-size: 14px;
+    }
+
+    .clear-btn:hover {
+      color: var(--text-main);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      border: none;
+      color: white;
+      padding: 0 28px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: var(--transition);
+      box-shadow: 0 4px 14px var(--primary-glow);
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--primary-glow);
+      filter: brightness(1.1);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    /* Controls Panel */
+    .controls-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .control-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--primary);
+      transition: var(--transition);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .val-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      color: var(--accent-cyan);
+      min-width: 32px;
+      text-align: center;
+    }
+
+    /* Toggle Switch */
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.15);
+      transition: .3s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-emerald);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Query Suggestion Chips */
+    .query-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .chip-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      align-self: center;
+      margin-right: 4px;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .chip:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.35);
+      color: var(--text-main);
+      transform: translateY(-1px);
+    }
+
+    /* Comparison Banner */
+    .comparison-panel {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      display: none;
+    }
+
+    .comparison-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .comparison-title h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recall-badge {
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .comp-metric-box {
+      background: rgba(0, 0, 0, 0.25);
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .comp-metric-name {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .comp-metric-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+      margin-top: 4px;
+    }
+
+    .comp-comparison-text {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* Results Header */
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 0 4px;
+    }
+
+    .results-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .results-meta {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Results List */
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .result-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      transition: var(--transition);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .result-card:hover {
+      background: var(--bg-surface-hover);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .result-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      gap: 16px;
+    }
+
+    .result-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rank-badge {
+      width: 26px;
+      height: 26px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .result-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .category-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* Category colors */
+    .cat-Algorithms { background: rgba(6, 182, 212, 0.12); color: var(--accent-cyan); border-color: rgba(6, 182, 212, 0.3); }
+    .cat-Data-Structures { background: rgba(99, 102, 241, 0.12); color: var(--primary); border-color: rgba(99, 102, 241, 0.3); }
+    .cat-Machine-Learning { background: rgba(168, 85, 247, 0.12); color: var(--accent-purple); border-color: rgba(168, 85, 247, 0.3); }
+    .cat-Databases { background: rgba(16, 185, 129, 0.12); color: var(--accent-emerald); border-color: rgba(16, 185, 129, 0.3); }
+    .cat-Distributed-Systems { background: rgba(245, 158, 11, 0.12); color: var(--accent-amber); border-color: rgba(245, 158, 11, 0.3); }
+    .cat-Operating-Systems { background: rgba(244, 63, 94, 0.12); color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.3); }
+    .cat-Information-Retrieval { background: rgba(14, 165, 233, 0.12); color: #38bdf8; border-color: rgba(14, 165, 233, 0.3); }
+
+    .score-box {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .similarity-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-emerald);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .distance-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan));
+      border-radius: 2px;
+      transition: width 0.5s ease-out;
+    }
+
+    .snippet-text {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .doc-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .doc-id-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    /* Empty and Error states */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-lg);
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 44px;
+      margin-bottom: 14px;
+      opacity: 0.6;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      max-width: 440px;
+      margin: 0 auto 20px;
+      color: var(--text-muted);
+    }
+
+    /* Modal / Graph Diagnostics */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: #0f172a;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      max-width: 600px;
+      width: 100%;
+      padding: 28px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .diag-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .diag-table th, .diag-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .diag-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .diag-table td {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      text-align: center;
+      padding: 30px 20px;
+      font-size: 12px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      header { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .header-actions { width: 100%; justify-content: space-between; }
+      .search-bar-wrapper { flex-direction: column; }
+      .btn-primary { width: 100%; justify-content: center; padding: 14px; }
+      .controls-panel { flex-direction: column; align-items: flex-start; }
+      .result-top { flex-direction: column; }
+      .score-box { text-align: left; margin-top: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Header -->
+    <header>
+      <div class="brand-title">
+        <div class="logo-badge">H</div>
+        <div>
+          <h1>HNSW Vector Search Engine</h1>
+          <div class="subtitle">Hierarchical Navigable Small World (ANN) & Exact Brute-Force Oracle</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="status-pill" id="indexStatusPill">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Checking Index...</span>
+        </div>
+        <button class="btn-secondary" id="btnGraphDiag" title="View HNSW Graph Hierarchy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Graph
+        </button>
+        <button class="btn-secondary" id="btnReindex" title="Re-index sample dataset">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          Re-Index
+        </button>
+      </div>
+    </header>
+
+    <!-- Stats HUD -->
+    <div class="stats-hud">
+      <div class="stat-card">
+        <div class="stat-label">Indexed Documents</div>
+        <div class="stat-value" id="hudDocCount">0</div>
+        <div class="stat-sub" id="hudDatasetName">sample_documents.csv</div>
+      </div>
+      <div class="stat-card accent-cyan">
+        <div class="stat-label">Query Latency</div>
+        <div class="stat-value" id="hudLatency">-- ms</div>
+        <div class="stat-sub" id="hudDistComps">0 distance checks</div>
+      </div>
+      <div class="stat-card accent-purple">
+        <div class="stat-label">Vector Dimension & Metric</div>
+        <div class="stat-value" id="hudDimMetric">64-d Cosine</div>
+        <div class="stat-sub" id="hudEmbedder">Deterministic Hash (SHA-256)</div>
+      </div>
+      <div class="stat-card accent-emerald">
+        <div class="stat-label">HNSW Top Layer / Nodes</div>
+        <div class="stat-value" id="hudGraphLayers">L0 / 0</div>
+        <div class="stat-sub" id="hudGraphM">M=16, M0=32, efC=64</div>
+      </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+      <div class="search-bar-wrapper">
+        <div class="search-input-box">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input 
+            type="text" 
+            class="search-input" 
+            id="searchInput" 
+            placeholder="Search documents by concept (e.g. 'balanced binary search tree', 'transformer attention')..." 
+            autocomplete="off"
+            autofocus
+          />
+          <button class="clear-btn" id="clearBtn">&times;</button>
+        </div>
+        <button class="btn-primary" id="btnSearch">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Search
+        </button>
+      </div>
+
+      <!-- Controls Panel -->
+      <div class="controls-panel">
+        <!-- Top-K Control -->
+        <div class="control-group">
+          <span class="control-label">Top-K:</span>
+          <div class="slider-container">
+            <input type="range" id="topKSlider" min="1" max="25" value="5">
+            <span class="val-badge" id="topKVal">5</span>
+          </div>
+        </div>
+
+        <!-- efSearch Control -->
+        <div class="control-group">
+          <span class="control-label">efSearch:</span>
+          <div class="slider-container">
+            <input type="range" id="efSearchSlider" min="5" max="100" value="32" step="5">
+            <span class="val-badge" id="efSearchVal">32</span>
+          </div>
+        </div>
+
+        <!-- Baseline Comparison Toggle -->
+        <div class="control-group">
+          <label class="toggle-wrapper">
+            <div class="switch">
+              <input type="checkbox" id="compareToggle">
+              <span class="slider"></span>
+            </div>
+            <span class="control-label" style="color: var(--text-main); font-weight: 600;">
+              Compare with Exact Brute-Force (Module 3)
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick query chips -->
+      <div class="query-chips">
+        <span class="chip-label">Try queries:</span>
+        <span class="chip" data-query="balanced binary search tree rotations">Binary Search Trees</span>
+        <span class="chip" data-query="dijkstra shortest path algorithm priority queue">Dijkstra Shortest Path</span>
+        <span class="chip" data-query="transformer attention deep neural networks">Transformer Attention</span>
+        <span class="chip" data-query="distributed consensus raft replication">Raft Consensus</span>
+        <span class="chip" data-query="operating system virtual memory paging">Virtual Memory & Paging</span>
+        <span class="chip" data-query="cryptography rsa public key encryption">RSA Cryptography</span>
+      </div>
+    </div>
+
+    <!-- Comparative Analysis Panel (Shown when compare is checked) -->
+    <div class="comparison-panel" id="comparisonPanel">
+      <div class="comparison-title">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Ground-Truth Accuracy & Speedup Evaluation
+        </h3>
+        <span class="recall-badge" id="compRecallBadge">Recall@5: 100.0%</span>
+      </div>
+      <div class="comparison-grid">
+        <div class="comp-metric-box">
+          <div class="comp-metric-name">HNSW Latency vs Brute-Force</div>
+          <div class="comp-metric-val" id="compLatencyVal">0.25 ms vs 0.35 ms</div>
+          <div class="comp-comparison-text" id="compSpeedupText">Speedup: 1.40x faster</div>
+        </div>
+        <div class="comp-metric-box">
+          <div class="comp-metric-name">Distance Computations</div>
+          <div class="comp-metric-val" id="compDistVal">29 vs 25 checks</div>
+          <div class="comp-comparison-text" id="compReductionText">Logarithmic routing</div>
+        </div>
+        <div class="comp-metric-box">
+          <div class="comp-metric-name">Search Algorithmic Mode</div>
+          <div class="comp-metric-val" style="color: var(--accent-emerald);">O(log N) ANN</div>
+          <div class="comp-comparison-text">Skip-list geometric routing</div>
+        </div>
+        <div class="comp-metric-box">
+          <div class="comp-metric-name">Oracle Precision</div>
+          <div class="comp-metric-val" style="color: var(--accent-purple);">100% Guaranteed</div>
+          <div class="comp-comparison-text">Module 3 ExactKNNBaseline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-header" id="resultsHeader" style="display: none;">
+      <div class="results-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Retrieved Documents (<span id="resultsCount">0</span>)
+      </div>
+      <div class="results-meta" id="resultsMeta">Latency: 0.000 ms</div>
+    </div>
+
+    <div class="results-container" id="resultsContainer">
+      <!-- Default Initial State -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🔍</div>
+        <h3>Ready to Explore Vector Search</h3>
+        <p>Type a query in the search box above or click one of the suggested computer science topics to query the HNSW graph.</p>
+      </div>
+    </div>
+
+    <!-- Graph Diagnostics Modal -->
+    <div class="modal-overlay" id="graphModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 style="font-size: 18px; font-weight: 700;">HNSW Graph Architecture Diagnostics</h2>
+          <button class="modal-close" id="btnModalClose">&times;</button>
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Empirical verification of multi-layer geometric skip-list hierarchy:
+        </div>
+        <div id="graphModalBody">Loading graph stats...</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      HNSW Vector Search Engine | DSA Team Project | Hierarchical Navigable Small World Algorithm
+    </footer>
+
+  </div>
+
+  <script>
+    // State management
+    let state = {
+      isIndexed: false,
+      totalDocuments: 0,
+      k: 5,
+      efSearch: 32,
+      compareMode: false,
+      lastQuery: "",
+      graphStats: null
+    };
+
+    // DOM Elements
+    const searchInput = document.getElementById("searchInput");
+    const clearBtn = document.getElementById("clearBtn");
+    const btnSearch = document.getElementById("btnSearch");
+    const topKSlider = document.getElementById("topKSlider");
+    const topKVal = document.getElementById("topKVal");
+    const efSearchSlider = document.getElementById("efSearchSlider");
+    const efSearchVal = document.getElementById("efSearchVal");
+    const compareToggle = document.getElementById("compareToggle");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const resultsHeader = document.getElementById("resultsHeader");
+    const resultsCount = document.getElementById("resultsCount");
+    const resultsMeta = document.getElementById("resultsMeta");
+    const comparisonPanel = document.getElementById("comparisonPanel");
+    const emptyState = document.getElementById("emptyState");
+    const btnReindex = document.getElementById("btnReindex");
+    const btnGraphDiag = document.getElementById("btnGraphDiag");
+    const graphModal = document.getElementById("graphModal");
+    const btnModalClose = document.getElementById("btnModalClose");
+    const graphModalBody = document.getElementById("graphModalBody");
+
+    // HUD Elements
+    const hudDocCount = document.getElementById("hudDocCount");
+    const hudLatency = document.getElementById("hudLatency");
+    const hudDistComps = document.getElementById("hudDistComps");
+    const hudDimMetric = document.getElementById("hudDimMetric");
+    const hudGraphLayers = document.getElementById("hudGraphLayers");
+    const indexStatusPill = document.getElementById("indexStatusPill");
+    const statusText = document.getElementById("statusText");
+    const statusDot = document.getElementById("statusDot");
+
+    // Initialize
+    async function init() {
+      setupEventListeners();
+      await fetchStatus();
+    }
+
+    function setupEventListeners() {
+      // Top-K slider
+      topKSlider.addEventListener("input", (e) => {
+        state.k = parseInt(e.target.value);
+        topKVal.textContent = state.k;
+        if (state.lastQuery) executeSearch();
+      });
+
+      // efSearch slider
+      efSearchSlider.addEventListener("input", (e) => {
+        state.efSearch = parseInt(e.target.value);
+        efSearchVal.textContent = state.efSearch;
+        if (state.lastQuery) executeSearch();
+      });
+
+      // Compare toggle
+      compareToggle.addEventListener("change", (e) => {
+        state.compareMode = e.target.checked;
+        if (state.lastQuery) executeSearch();
+      });
+
+      // Search input enter key
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          executeSearch();
+        }
+      });
+
+      // Search input change -> toggle clear btn
+      searchInput.addEventListener("input", (e) => {
+        clearBtn.style.display = e.target.value ? "block" : "none";
+      });
+
+      clearBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        clearBtn.style.display = "none";
+        searchInput.focus();
+      });
+
+      btnSearch.addEventListener("click", executeSearch);
+
+      // Re-index button
+      btnReindex.addEventListener("click", async () => {
+        btnReindex.disabled = true;
+        btnReindex.innerHTML = "Indexing...";
+        try {
+          const res = await fetch("/api/load", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({})
+          });
+          const data = await res.json();
+          if (data.error) {
+            alert("Error loading dataset: " + data.error);
+          } else {
+            await fetchStatus();
+            if (state.lastQuery) executeSearch();
+          }
+        } catch (err) {
+          alert("Failed to connect to server: " + err.message);
+        } finally {
+          btnReindex.disabled = false;
+          btnReindex.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+            Re-Index
+          `;
+        }
+      });
+
+      // Graph modal
+      btnGraphDiag.addEventListener("click", () => {
+        renderGraphDiagnostics();
+        graphModal.style.display = "flex";
+      });
+
+      btnModalClose.addEventListener("click", () => {
+        graphModal.style.display = "none";
+      });
+
+      graphModal.addEventListener("click", (e) => {
+        if (e.target === graphModal) graphModal.style.display = "none";
+      });
+
+      // Quick chips
+      document.querySelectorAll(".chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          const q = chip.getAttribute("data-query");
+          searchInput.value = q;
+          clearBtn.style.display = "block";
+          executeSearch();
+        });
+      });
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        
+        state.isIndexed = data.is_indexed;
+        state.totalDocuments = data.total_documents;
+        state.graphStats = data.graph_diagnostics;
+
+        if (state.isIndexed) {
+          statusText.textContent = `Active (${state.totalDocuments} Docs)`;
+          statusDot.style.background = "var(--accent-emerald)";
+          hudDocCount.textContent = state.totalDocuments;
+          hudDimMetric.textContent = `${data.embedding_dimension}-d ${capitalize(data.distance_metric)}`;
+          
+          if (data.graph_diagnostics) {
+            const maxL = data.graph_diagnostics.max_level || 0;
+            hudGraphLayers.textContent = `L${maxL} (${data.graph_diagnostics.total_nodes} nodes)`;
+          }
+        } else {
+          statusText.textContent = "Not Indexed";
+          statusDot.style.background = "var(--accent-rose)";
+          hudDocCount.textContent = "0";
+        }
+      } catch (err) {
+        statusText.textContent = "Server Offline";
+        statusDot.style.background = "var(--accent-rose)";
+      }
+    }
+
+    async function executeSearch() {
+      const query = searchInput.value.trim();
+      if (!query) {
+        searchInput.focus();
+        return;
+      }
+
+      state.lastQuery = query;
+      btnSearch.disabled = true;
+      btnSearch.innerHTML = "Searching...";
+
+      try {
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: query,
+            k: state.k,
+            ef_search: state.efSearch,
+            compare_baseline: state.compareMode
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          renderError(data.error);
+          return;
+        }
+
+        if (state.compareMode && data.hnsw) {
+          renderComparisonResults(data);
+        } else {
+          renderSearchResults(data);
+        }
+
+      } catch (err) {
+        renderError("Connection failure: " + err.message);
+      } finally {
+        btnSearch.disabled = false;
+        btnSearch.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Search
+        `;
+      }
+    }
+
+    function renderSearchResults(data) {
+      comparisonPanel.style.display = "none";
+      resultsHeader.style.display = "flex";
+      resultsCount.textContent = data.results.length;
+      resultsMeta.textContent = `Latency: ${data.latency_ms.toFixed(3)} ms | Checks: ${data.distance_computations}`;
+
+      // Update HUD
+      hudLatency.textContent = `${data.latency_ms.toFixed(3)} ms`;
+      hudDistComps.textContent = `${data.distance_computations} distance checks`;
+
+      if (data.results.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            <h3>No matching documents</h3>
+            <p>Try broadening your query keywords or increasing Top-K.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = "";
+      data.results.forEach(item => {
+        html += buildResultCardHtml(item);
+      });
+
+      resultsContainer.innerHTML = html;
+    }
+
+    function renderComparisonResults(comp) {
+      comparisonPanel.style.display = "block";
+      resultsHeader.style.display = "flex";
+
+      const h = comp.hnsw;
+      const b = comp.baseline;
+
+      resultsCount.textContent = h.results.length;
+      resultsMeta.textContent = `HNSW: ${h.latency_ms.toFixed(3)} ms vs Brute-Force: ${b.latency_ms.toFixed(3)} ms`;
+
+      // Update comparison panel metrics
+      document.getElementById("compRecallBadge").textContent = `Recall@${comp.k}: ${comp.recall_percent.toFixed(1)}%`;
+      document.getElementById("compLatencyVal").textContent = `${h.latency_ms.toFixed(3)} ms vs ${b.latency_ms.toFixed(3)} ms`;
+      document.getElementById("compSpeedupText").textContent = `Speedup: ${comp.speedup.toFixed(2)}x faster`;
+      document.getElementById("compDistVal").textContent = `${h.distance_computations} vs ${b.distance_computations} checks`;
+      document.getElementById("compReductionText").textContent = `${comp.distance_reduction_ratio.toFixed(2)}x fewer distance evaluations`;
+
+      // Update HUD
+      hudLatency.textContent = `${h.latency_ms.toFixed(3)} ms`;
+      hudDistComps.textContent = `${h.distance_computations} checks (${comp.speedup.toFixed(1)}x)`;
+
+      let html = "";
+      h.results.forEach(item => {
+        // Check if matched in ground truth
+        const inOracle = b.results.some(br => br.doc_id === item.doc_id);
+        html += buildResultCardHtml(item, inOracle);
+      });
+
+      resultsContainer.innerHTML = html;
+    }
+
+    function buildResultCardHtml(item, inOracle = null) {
+      const catClass = "cat-" + (item.category || "General").replace(/\s+/g, "-");
+      const simPercent = (item.similarity * 100).toFixed(1);
+      
+      let oracleTag = "";
+      if (inOracle !== null) {
+        if (inOracle) {
+          oracleTag = `<span style="font-size: 11px; font-weight: 700; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.12); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.25);">✓ Ground-Truth Match</span>`;
+        } else {
+          oracleTag = `<span style="font-size: 11px; font-weight: 700; color: var(--accent-amber); background: rgba(245, 158, 11, 0.12); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.25);">Approximate Variant</span>`;
+        }
+      }
+
+      return `
+        <div class="result-card">
+          <div class="result-top">
+            <div class="result-title-group">
+              <span class="rank-badge">#${item.rank}</span>
+              <h3 class="result-title">${escapeHtml(item.title)}</h3>
+              <span class="category-badge ${catClass}">${escapeHtml(item.category)}</span>
+              ${oracleTag}
+            </div>
+            <div class="score-box">
+              <div class="similarity-label">${simPercent}% Match</div>
+              <div class="distance-label">Cosine Dist: ${item.distance.toFixed(4)}</div>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" style="width: ${Math.max(5, Math.min(100, item.similarity * 100))}%;"></div>
+          </div>
+          <p class="snippet-text">${escapeHtml(item.snippet)}</p>
+          <div class="doc-meta-row">
+            <span class="doc-id-pill">ID: ${escapeHtml(item.doc_id)}</span>
+            <span>HNSW Approximate Nearest Neighbor</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderError(msg) {
+      comparisonPanel.style.display = "none";
+      resultsHeader.style.display = "none";
+      resultsContainer.innerHTML = `
+        <div class="empty-state" style="border-color: rgba(244, 63, 94, 0.3);">
+          <div class="empty-icon" style="color: var(--accent-rose);">⚠️</div>
+          <h3 style="color: var(--accent-rose);">Search Error</h3>
+          <p>${escapeHtml(msg)}</p>
+          <button class="btn-primary" onclick="btnReindex.click()">Load Dataset Now</button>
+        </div>
+      `;
+    }
+
+    function renderGraphDiagnostics() {
+      if (!state.graphStats) {
+        graphModalBody.innerHTML = "<p>No graph diagnostics available. Build index first.</p>";
+        return;
+      }
+      const s = state.graphStats;
+      const nodesPerLevel = s.nodes_per_level || {};
+      const avgDeg = s.avg_degree_per_level || {};
+
+      let rows = "";
+      Object.keys(nodesPerLevel).sort((a,b) => b - a).forEach(lvl => {
+        const isHighway = parseInt(lvl) > 0 ? "⚡ Highway Layer" : "Fine Ground Layer";
+        rows += `
+          <tr>
+            <td><strong>Layer ${lvl}</strong> (${isHighway})</td>
+            <td>${nodesPerLevel[lvl]}</td>
+            <td>${avgDeg[lvl] !== undefined ? avgDeg[lvl].toFixed(1) : "N/A"}</td>
+          </tr>
+        `;
+      });
+
+      graphModalBody.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+            <div style="font-size: 11px; color: var(--text-muted);">Max Level</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--accent-cyan);">${s.max_level}</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+            <div style="font-size: 11px; color: var(--text-muted);">Total Nodes</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--accent-emerald);">${s.total_nodes}</div>
+          </div>
+        </div>
+        <table class="diag-table">
+          <thead>
+            <tr>
+              <th>Hierarchy Level</th>
+              <th>Nodes Count</th>
+              <th>Avg Degree</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function capitalize(s) {
+      if (!s) return "";
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Start application on DOM ready
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
